@@ -1,4 +1,3 @@
-# Airflow image
 image:
   repository: apache/airflow
   tag: "2.9.0"
@@ -15,6 +14,24 @@ airflow:
   config:
     AIRFLOW__CORE__LOAD_EXAMPLES: "False"
     AIRFLOW__CORE__EXECUTOR: "LocalExecutor"
+  connections:
+    - id: mysql_conn
+      type: mysql
+      host: mysql.devproject
+      schema: bankappdb
+      login: root
+      # For demo: set via Kubernetes Secret or ESO
+      password: "{{ .Values.mysql.rootPassword | default \"demo-pass\" }}"
+      port: 3306
+    - id: minio_conn
+      type: s3
+      extra: |
+        {
+          "aws_access_key_id": "minioadmin",
+          "aws_secret_access_key": "minioadmin",
+          "host": "http://minio.minio:9000",
+          "region_name": "us-east-1"
+        }
 
 # Enable Postgres (Airflow metadata DB)
 postgresql:
@@ -22,7 +39,7 @@ postgresql:
   primary:
     persistence:
       enabled: true
-      storageClass: gp2   # force AWS gp2 storage class
+      storageClass: gp2   # change to gp3 if gp2 fails
 
 # Disable Redis (not needed for LocalExecutor)
 redis:
@@ -52,35 +69,14 @@ dags:
   persistence:
     enabled: false
   path: /opt/airflow/dags
-  # Add mount for DAGs configmap
   gitSync:
     enabled: false
+
 extraVolumes:
   - name: airflow-dags
     configMap:
       name: airflow-dags
+
 extraVolumeMounts:
   - name: airflow-dags
     mountPath: /opt/airflow/dags
-    
-airflow:
-  connections:
-    - id: mysql_conn
-      type: mysql
-      host: mysql.devproject
-      schema: bankappdb
-      login: root
-      password: "{{ .Values.mysql.rootPassword }}"  # or from ESO secret
-      port: 3306
-    - id: minio_conn
-      type: s3
-      extra: |
-        {
-          "aws_access_key_id": "minioadmin",
-          "aws_secret_access_key": "minioadmin",
-          "host": "http://minio.minio:9000",
-          "region_name": "us-east-1"
-        }
-    
-    
-
