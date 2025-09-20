@@ -389,6 +389,7 @@ jobs:
       - name: Apply Argo CD Application manifest
         run: |
           kubectl apply -f manifest/argocd-app-bankapp.yaml || true
+          kubectl apply -f helm/airflow/gp3-csi-storageclass.yaml
 
       - name: Update Helm values.yaml with new image tag and push
         env:
