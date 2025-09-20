@@ -4,8 +4,8 @@ image:
   tag: "2.9.0"
   pullPolicy: IfNotPresent
 
-# Executor
-executor: "CeleryExecutor"
+# Executor - keep it simple
+executor: "LocalExecutor"
 
 # Airflow base configs
 airflow:
@@ -14,17 +14,19 @@ airflow:
   webserverSecretKey: "another-secret-key"
   config:
     AIRFLOW__CORE__LOAD_EXAMPLES: "False"
-    AIRFLOW__CORE__EXECUTOR: "CeleryExecutor"
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN_SECRET: "airflow-mysql-conn"  # refers to a Secret key (see below)
+    AIRFLOW__CORE__EXECUTOR: "LocalExecutor"
 
-# Disable Postgres
+#  Enable Postgres (Airflow metadata DB)
 postgresql:
-  enabled: false
-
-# Redis for CeleryExecutor
-redis:
   enabled: true
-  architecture: standalone
+  primary:
+    persistence:
+      enabled: true
+      storageClass: gp2   # force AWS gp2 storage class
+
+#  Disable Redis (not needed for LocalExecutor)
+redis:
+  enabled: false
 
 # Scheduler
 scheduler:
@@ -37,27 +39,29 @@ web:
     type: ClusterIP
     port: 8080
 
-# Worker pods
+#  Disable Workers (only needed for CeleryExecutor)
 workers:
-  replicas: 2
+  enabled: false
 
-# DAGs config
+#  Disable Triggerer (optional, keeps demo light)
+triggerer:
+  enabled: false
+
+# DAGs config (for demo, mount via ConfigMap or S3/git-sync in prod)
 dags:
   persistence:
-    enabled: false # switch to PVC/S3/git-sync for prod
+    enabled: false
   path: /opt/airflow/dags
 
-# Logs persistence
+# Logs persistence (disable for demo)
 logs:
   persistence:
     enabled: false
 
-# Ingress
+# Ingress (disabled for demo, you can port-forward)
 ingress:
   enabled: false
-  className: nginx
-  hosts:
-    - host: airflow.local
+
       paths:
         - path: /
           pathType: Prefix
