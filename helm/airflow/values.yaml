@@ -3,12 +3,11 @@ image:
   tag: "2.9.0"
   pullPolicy: IfNotPresent
 
-# Executor - keep it simple
+# Executor - simplest for demo
 executor: "LocalExecutor"
 
-# Airflow base configs
 airflow:
-  fernetKey: "your-fernet-key-here"   # generate with: openssl rand -base64 32
+  fernetKey: "your-fernet-key-here"   # openssl rand -base64 32
   secretKey: "super-secret-key"
   webserverSecretKey: "another-secret-key"
   config:
@@ -20,8 +19,7 @@ airflow:
       host: mysql.devproject
       schema: bankappdb
       login: root
-      # For demo: set via Kubernetes Secret or ESO
-      password: "{{ .Values.mysql.rootPassword | default \"demo-pass\" }}"
+      password: "Test@123"    # ⚠️ Replace with ESO secret mount later
       port: 3306
     - id: minio_conn
       type: s3
@@ -33,38 +31,34 @@ airflow:
           "region_name": "us-east-1"
         }
 
-# Enable Postgres (Airflow metadata DB)
 postgresql:
   enabled: true
   primary:
     persistence:
       enabled: true
-      storageClass: gp3-csi   # change to gp3 if gp2 fails
+      storageClass: gp3-csi   # ✅ CSI-backed EBS
 
-# Disable Redis (not needed for LocalExecutor)
+# Disable everything not needed for LocalExecutor
 redis:
   enabled: false
+workers:
+  enabled: false
+triggerer:
+  enabled: false
+logs:
+  persistence:
+    enabled: false   # ✅ no PVCs for logs
 
-# Scheduler
 scheduler:
   replicas: 1
 
-# Webserver
 web:
   replicas: 1
   service:
     type: ClusterIP
     port: 8080
 
-# Disable Workers (only needed for CeleryExecutor)
-workers:
-  enabled: false
-
-# Disable Triggerer (optional, keeps demo light)
-triggerer:
-  enabled: false
-
-# DAGs config
+# Mount DAGs from ConfigMap
 dags:
   persistence:
     enabled: false
