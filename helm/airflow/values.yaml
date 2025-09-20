@@ -19,7 +19,7 @@ airflow:
       host: mysql.devproject
       schema: bankappdb
       login: root
-      password: "Test@123"    # ⚠️ Replace with ESO secret mount later
+      password: "Test@123"    
       port: 3306
     - id: minio_conn
       type: s3
@@ -35,8 +35,9 @@ postgresql:
   enabled: true
   primary:
     persistence:
-      enabled: false
-      storageClass: gp3-csi   # ✅ CSI-backed EBS
+      enabled: true
+      storageClass: gp3-csi
+      size: 8Gi
 
 # Disable everything not needed for LocalExecutor
 redis:
