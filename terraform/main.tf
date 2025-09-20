@@ -148,52 +148,52 @@ resource "aws_iam_role" "external_secrets_irsa" {
 # }
 #
 #
-# data "aws_iam_policy_document" "external_secrets_policy" {
-#   statement {
-#     effect = "Allow"
-#     actions = [
-#       "secretsmanager:GetSecretValue",
-#       "secretsmanager:DescribeSecret",
-#       "secretsmanager:ListSecretVersionIds",
-#       "secretsmanager:ListSecrets"
-#     ]
-#     resources = ["*"]
-#   }
-#   statement {
-#     effect = "Allow"
-#     actions = [
-#       "ssm:GetParameter",
-#       "ssm:GetParameters",
-#       "ssm:GetParametersByPath"
-#     ]
-#     resources = ["*"]
-#   }
-# }
-#
-# resource "aws_iam_role_policy" "external_secrets_access" {
-#   name = "external-secrets-access"
-#   role = aws_iam_role.external_secrets_irsa.name
-#
-#   policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [
-#       {
-#         Sid = "AllowReadSecrets"
-#         Effect = "Allow"
-#         Action = [
-#           "secretsmanager:GetSecretValue",
-#           "secretsmanager:DescribeSecret"
-#         ]
-#         Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:bankapp/mysql*"
-#       },
-#       {
-#         Sid = "AllowKMSDecryptIfNeeded"
-#         Effect = "Allow"
-#         Action = [
-#           "kms:Decrypt"
-#         ]
-#         Resource = "*" # narrow this down to the KMS key ARN if you can
-#       }
-#     ]
-#   })
-# }
+data "aws_iam_policy_document" "external_secrets_policy" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "secretsmanager:GetSecretValue",
+      "secretsmanager:DescribeSecret",
+      "secretsmanager:ListSecretVersionIds",
+      "secretsmanager:ListSecrets"
+    ]
+    resources = ["*"]
+  }
+  statement {
+    effect = "Allow"
+    actions = [
+      "ssm:GetParameter",
+      "ssm:GetParameters",
+      "ssm:GetParametersByPath"
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "external_secrets_access" {
+  name = "external-secrets-access"
+  role = aws_iam_role.external_secrets_irsa.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid = "AllowReadSecrets"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:bankapp/mysql*"
+      },
+      {
+        Sid = "AllowKMSDecryptIfNeeded"
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt"
+        ]
+        Resource = "*" # narrow this down to the KMS key ARN if you can
+      }
+    ]
+  })
+}
