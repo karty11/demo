@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trino
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/karty11/New_project.git
+    targetRevision: HEAD
+    path: helm/trino
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: trino
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-webserver
+  namespace: airflow
+spec:
+  template:
+    spec:
+      volumes:
+        - name: dags-volume
+          configMap:
+            name: airflow-dags
+      containers:
+        - name: airflow-webserver
+          volumeMounts:
+            - name: dags-volume
+              mountPath: /opt/airflow/dags
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airflow-scheduler
+  namespace: airflow
+spec:
+  template:
+    spec:
+      volumes:
+        - name: dags-volume
+          configMap:
+            name: airflow-dags
+      containers:
+        - name: airflow-scheduler
+          volumeMounts:
+            - name: dags-volume
+              mountPath: /opt/airflow/dags

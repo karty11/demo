@@ -1,0 +1,17 @@
+coordinator:
+  replicaCount: 1
+workers:
+  replicaCount: 1
+service:
+  type: ClusterIP
+  port: 8080
+catalogs:
+  minio.properties: |
+    connector.name=hive
+    hive.metastore=none
+    hive.s3.aws-access-key=minioadmin
+    hive.s3.aws-secret-key=minioadmin
+    hive.s3.endpoint=http://minio.minio:9000
+    hive.s3.path-style-access=true
+    hive.s3.file-system-type=presto
+    hive.s3.enable-ssl=false

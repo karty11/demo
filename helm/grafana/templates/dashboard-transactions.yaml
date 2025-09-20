@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-transactions
+  labels:
+    grafana_dashboard: "1"
+data:
+  transactions.json: |
+    {
+      "title": "Transactions Dashboard",
+      "refresh": "10s",
+      "schemaVersion": 36,
+      "version": 1,
+      "panels": [
+        { "type": "timeseries", "title": "Daily Totals",
+          "targets": [{ "rawSql": "SELECT CAST(day AS timestamp) AS time, SUM(amount) AS value FROM default.transactions_cur GROUP BY day ORDER BY day;" }] },
+        { "type": "piechart", "title": "Totals by User",
+          "targets": [{ "rawSql": "SELECT user_id AS metric, SUM(amount) AS value FROM default.transactions_cur GROUP BY user_id;" }] },
+        { "type": "stat", "title": "Total Count",
+          "targets": [{ "rawSql": "SELECT COUNT(*) AS value FROM default.transactions_cur;" }] }
+      ]
+    }

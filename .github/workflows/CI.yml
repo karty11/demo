@@ -1,0 +1,323 @@
+name: CI Pipeline
+
+on:
+  workflow_dispatch:  # manual trigger only
+
+jobs:
+  compile:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+      - name: Build with Maven
+        run: |
+          mvn clean package -U
+          mvn -B package --file pom.xml
+          mvn dependency:tree -Dincludes=software.amazon.awssdk
+
+  security-check:
+    runs-on: self-hosted
+    needs: compile
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Trivy and Scan
+        run: |
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update -y
+          sudo apt-get install -y trivy
+          trivy fs --format table -o fs-report.json .
+      - name: Gitleaks
+        run: sudo apt install gitleaks -y && gitleaks detect source . -r gitleaks-report.json -f json
+
+  test:
+    runs-on: self-hosted
+    needs: security-check
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+      - name: Unit Test Cases
+        run: mvn test
+
+  build_project_and_sonar_scan:
+    runs-on: self-hosted
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+      - name: Build Project
+        run: mvn package
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jar
+          path: target/*.jar
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5.3.0
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+      - name: SonarQube Quality Gate check
+        id: sonarqube-quality-gate-check
+        uses: sonarsource/sonarqube-quality-gate-action@master
+        with:
+          pollingTimeoutSec: 600
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+
+  tf_datalake:
+    runs-on: self-hosted
+    needs: build_project_and_sonar_scan
+    outputs:
+      datalake_bucket: ${{ steps.tf_apply.outputs.datalake_bucket }}
+      glue_db: ${{ steps.tf_apply.outputs.glue_db }}
+      glue_job_name: ${{ steps.tf_apply.outputs.glue_job_name }}
+      glue_crawler_name: ${{ steps.tf_apply.outputs.glue_crawler_name }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials 
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: us-west-2
+
+    - name: Ensure jq installed
+      run: |
+        if ! command -v jq >/dev/null 2>&1; then
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+        fi
+    - name: Install Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.3.9
+
+    - name: Install Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'    
+        
+    - name: Install Terragrunt
+      run: |
+        TG_VERSION=0.67.11
+        wget https://github.com/gruntwork-io/terragrunt/releases/download/v${TG_VERSION}/terragrunt_linux_amd64
+        sudo mv terragrunt_linux_amd64 /usr/local/bin/terragrunt
+        sudo chmod +x /usr/local/bin/terragrunt
+    
+
+    - name: Terragrunt apply (data-lake)
+      id: tf_apply
+      working-directory: infra   # where terragrunt.hcl + inputs.yaml exist
+      env:
+        AWS_REGION: us-west-2
+      run: |
+        set -euo pipefail
+        terragrunt apply -auto-approve
+
+        # Capture outputs for later jobs
+        terragrunt output -json > datalake-outputs.json
+        DATALAKE_BUCKET=$(jq -r '.datalake_bucket.value' datalake-outputs.json || echo "")
+        GLUE_DB=$(jq -r '.datalake_db.value' datalake-outputs.json || echo "")
+        GLUE_JOB_NAME=$(jq -r '.glue_job_name.value' datalake-outputs.json || echo "")
+        GLUE_CRAWLER_NAME=$(jq -r '.glue_crawler_name.value' datalake-outputs.json || echo "")
+
+        echo "datalake_bucket=${DATALAKE_BUCKET}" >> $GITHUB_OUTPUT
+        echo "glue_db=${GLUE_DB}" >> $GITHUB_OUTPUT
+        echo "glue_job_name=${GLUE_JOB_NAME}" >> $GITHUB_OUTPUT
+        echo "glue_crawler_name=${GLUE_CRAWLER_NAME}" >> $GITHUB_OUTPUT
+
+    - name: Upload Glue ETL script to S3
+      run: |
+        aws s3 cp infra/glue-scripts/mysql_to_s3.py s3://${{ steps.tf_apply.outputs.datalake_bucket }}/scripts/mysql_to_s3.py
+
+  builds_docker_image_and_push:
+    runs-on: self-hosted
+    needs: [build_project_and_sonar_scan, tf_datalake]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download JAR artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: app-jar
+          path: app
+          
+      - name: Install Docker
+        run: |
+          if ! command -v docker >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y docker.io
+            sudo systemctl enable docker
+            sudo systemctl start docker
+          fi
+          docker --version
+          
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and Push Docker image
+        run: |
+          IMAGE_REPO=karty11/newbankapp
+          IMAGE_TAG_SHA=${GITHUB_SHA}
+          IMAGE_TAG_BRANCH=${GITHUB_REF_NAME}
+
+          echo "Building and pushing Docker image..."
+          docker build -t $IMAGE_REPO:$IMAGE_TAG_SHA -t $IMAGE_REPO:$IMAGE_TAG_BRANCH -t $IMAGE_REPO:latest .
+
+          docker push $IMAGE_REPO:$IMAGE_TAG_SHA
+          docker push $IMAGE_REPO:$IMAGE_TAG_BRANCH
+          docker push $IMAGE_REPO:latest
+
+
+
+# name: CI Pipeline
+
+# # on:
+# #  push:
+# #    branches: [ "main" ]
+# on:
+#   workflow_dispatch:  # <-- manual trigger only
+
+# jobs:
+#   compile:
+#     runs-on: self-hosted
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: Set up JDK 17
+#         uses: actions/setup-java@v4
+#         with:
+#           java-version: '17'
+#           distribution: 'temurin'
+#           cache: maven
+#       - name: Build with Maven
+#         run: mvn -B package --file pom.xml
+
+#   security-check:
+#     runs-on: self-hosted
+#     needs: compile
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: Install Trivy and Scan
+#         run: |
+#           sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+#           wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+#           echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+#           sudo apt-get update -y
+#           sudo apt-get install -y trivy
+#           trivy fs --format table -o fs-report.json .
+#       - name: Gitleaks
+#         run: sudo apt install gitleaks -y && gitleaks detect source . -r gitleaks-report.json -f json
+
+#   test:
+#     runs-on: self-hosted
+#     needs: security-check
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: Set up JDK 17
+#         uses: actions/setup-java@v4
+#         with:
+#           java-version: '17'
+#           distribution: 'temurin'
+#           cache: maven
+#       - name: Unit Test Cases
+#         run: mvn test
+
+#   build_project_and_sonar_scan:
+#     runs-on: self-hosted
+#     needs: test
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: Set up JDK 17
+#         uses: actions/setup-java@v4
+#         with:
+#           java-version: '17'
+#           distribution: 'temurin'
+#           cache: maven
+#       - name: Build Project
+#         run: mvn package
+#       - name: Upload JAR artifact
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: app-jar
+#           path: target/*.jar
+#       - name: SonarQube Scan
+#         uses: SonarSource/sonarqube-scan-action@v5.3.0
+#         env:
+#           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+#           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+
+#       - name: SonarQube Quality Gate check
+#         id: sonarqube-quality-gate-check
+#         uses: sonarsource/sonarqube-quality-gate-action@master
+#         with:
+#           pollingTimeoutSec: 600
+#         env:
+#          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+#          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+
+#   builds_docker_image_and_push:
+#     runs-on: self-hosted
+#     needs: build_project_and_sonar_scan
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: Download JAR artifact
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: app-jar
+#           path: app
+#       - name: Login to Docker Hub
+#         uses: docker/login-action@v3
+#         with:
+#           username: ${{ vars.DOCKERHUB_USERNAME }}
+#           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+#       - name: Set up QEMU
+#         uses: docker/setup-qemu-action@v3
+#         with:
+#          platforms: all
+#          image: tonistiigi/binfmt:latest 
+      
+#       - name: Set up Docker Buildx
+#         uses: docker/setup-buildx-action@v3
+#         with:
+#           install: true
+#           use: true
+#           driver-opts: image=moby/buildkit:latest
+     
+#       - name: Build and Push Docker image
+#         uses: docker/build-push-action@v6
+#         with:
+#           context: .
+#           push: true
+#           tags: |
+#             karty11/newbankapp:latest
+#             karty11/newbankapp:${{ github.sha }}
+#           file: ./Dockerfile
