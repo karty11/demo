@@ -390,6 +390,7 @@ jobs:
         run: |
           kubectl apply -f manifest/argocd-app-bankapp.yaml || true
           kubectl apply -f helm/airflow/gp3-csi-storageclass.yaml
+          
 
       - name: Update Helm values.yaml with new image tag and push
         env:
@@ -438,6 +439,9 @@ jobs:
             kubectl apply -f manifest/argocd-app-trino.yaml
             kubectl apply -f manifest/argocd-app-airflow.yaml
             kubectl apply -f manifest/argocd-app-grafana.yaml    
+            helm upgrade --install airflow apache-airflow/airflow \
+            -n airflow \
+            -f helm/airflow/values.yaml
           
             # --- Sync Data Lake Components ---
       - name: Trigger ArgoCD sync - minio
