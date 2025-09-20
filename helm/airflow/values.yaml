@@ -1,41 +1,63 @@
-executor: LocalExecutor
+# Airflow image
+image:
+  repository: apache/airflow
+  tag: "2.9.0"
+  pullPolicy: IfNotPresent
+
+# Executor
+executor: "CeleryExecutor"
+
+# Airflow base configs
+airflow:
+  fernetKey: "your-fernet-key-here"   # generate with: openssl rand -base64 32
+  secretKey: "super-secret-key"
+  webserverSecretKey: "another-secret-key"
+  config:
+    AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+    AIRFLOW__CORE__EXECUTOR: "CeleryExecutor"
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN_SECRET: "airflow-mysql-conn"  # refers to a Secret key (see below)
+
+# Disable Postgres
+postgresql:
+  enabled: false
+
+# Redis for CeleryExecutor
+redis:
+  enabled: true
+  architecture: standalone
+
+# Scheduler
+scheduler:
+  replicas: 1
+
+# Webserver
 web:
+  replicas: 1
   service:
     type: ClusterIP
     port: 8080
 
-airflow:
-  image:
-    repository: apache/airflow
-    tag: 2.6.3
+# Worker pods
+workers:
+  replicas: 2
 
-  fernetKey: "change_me_fernet_key"
-  defaultUser:
-    enabled: true
-    username: admin
-    password: admin
-    role: Admin
-    email: admin@example.com
+# DAGs config
+dags:
+  persistence:
+    enabled: false # switch to PVC/S3/git-sync for prod
+  path: /opt/airflow/dags
 
-  connections:
-    - id: mysql_conn
-      type: mysql
-      host: mysql.devproject
-      login: app
-      password: apppass
-      schema: appdb
-    - id: minio_conn
-      type: s3
-      extra: |
-        {
-          "aws_access_key_id": "minioadmin",
-          "aws_secret_access_key": "minioadmin",
-          "host": "http://minio.minio:9000",
-          "region_name": "us-east-1",
-          "config_kwargs": {"s3": {"addressing_style": "path"}}
-        }
-    - id: trino_default
-      type: trino
-      host: trino.trino
-      schema: default
-      port: 8080
+# Logs persistence
+logs:
+  persistence:
+    enabled: false
+
+# Ingress
+ingress:
+  enabled: false
+  className: nginx
+  hosts:
+    - host: airflow.local
+      paths:
+        - path: /
+          pathType: Prefix
