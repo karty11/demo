@@ -6,9 +6,43 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/karty11/demo.git'
-    targetRevision: HEAD
-    path: helm/grafana
+    repoURL: 'https://grafana.github.io/helm-charts'
+    chart: grafana
+    targetRevision: 8.3.9
+    helm:
+      releaseName: grafana
+      values: |
+        adminUser: admin
+        adminPassword: admin
+        service:
+          type: ClusterIP
+          port: 3000
+        datasources:
+          datasources.yaml:
+            apiVersion: 1
+            datasources:
+              - name: Trino
+                type: trinodb-trino-datasource
+                access: proxy
+                url: http://trino.trino:8080
+                isDefault: true
+                jsonData:
+                  catalog: hive
+                  schema: default
+        dashboardProviders:
+          dashboardproviders.yaml:
+            apiVersion: 1
+            providers:
+              - name: 'default'
+                orgId: 1
+                folder: ''
+                type: file
+                disableDeletion: false
+                editable: true
+                options:
+                  path: /var/lib/grafana/dashboards
+        dashboardsConfigMaps:
+          default: grafana-dashboard-transactions
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: grafana
@@ -16,3 +50,4 @@ spec:
     automated:
       prune: true
       selfHeal: true
+
