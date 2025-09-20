@@ -22,6 +22,6 @@ output "role_name" {
   value = aws_iam_role.external_secrets_irsa.name
 }
 
-output "datalake_policy_arn" {
-  value = aws_iam_policy.datalake_policy.arn
-}
+# output "datalake_policy_arn" {
+#   value = aws_iam_policy.datalake_policy.arn
+# }
