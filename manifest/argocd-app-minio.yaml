@@ -6,9 +6,19 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/karty11/demo.git'
-    targetRevision: HEAD
-    path: helm/minio
+    repoURL: 'https://charts.bitnami.com/bitnami'
+    chart: minio
+    targetRevision: 14.7.21
+    helm:
+      releaseName: minio
+      values: |
+        auth:
+          rootUser: admin
+          rootPassword: minio123
+        defaultBuckets: bankapp,datalake
+        service:
+          type: ClusterIP
+          port: 9000
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: minio
