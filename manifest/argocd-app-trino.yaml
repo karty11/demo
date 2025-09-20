@@ -6,9 +6,19 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/karty11/demo.git'
-    targetRevision: HEAD
-    path: helm/trino
+    repoURL: 'https://charts.bitnami.com/bitnami'
+    chart: trino
+    targetRevision: 15.1.0
+    helm:
+      releaseName: trino
+      values: |
+        service:
+          type: ClusterIP
+          port: 8080
+        catalog:
+          hive:
+            connector.name: hive-hadoop2
+            hive.metastore.uri: thrift://hive-metastore:9083
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: trino
