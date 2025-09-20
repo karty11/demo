@@ -16,7 +16,7 @@ airflow:
     AIRFLOW__CORE__LOAD_EXAMPLES: "False"
     AIRFLOW__CORE__EXECUTOR: "LocalExecutor"
 
-#  Enable Postgres (Airflow metadata DB)
+# Enable Postgres (Airflow metadata DB)
 postgresql:
   enabled: true
   primary:
@@ -24,7 +24,7 @@ postgresql:
       enabled: true
       storageClass: gp2   # force AWS gp2 storage class
 
-#  Disable Redis (not needed for LocalExecutor)
+# Disable Redis (not needed for LocalExecutor)
 redis:
   enabled: false
 
@@ -39,29 +39,27 @@ web:
     type: ClusterIP
     port: 8080
 
-#  Disable Workers (only needed for CeleryExecutor)
+# Disable Workers (only needed for CeleryExecutor)
 workers:
   enabled: false
 
-#  Disable Triggerer (optional, keeps demo light)
+# Disable Triggerer (optional, keeps demo light)
 triggerer:
   enabled: false
 
-# DAGs config (for demo, mount via ConfigMap or S3/git-sync in prod)
+# DAGs config
 dags:
   persistence:
     enabled: false
   path: /opt/airflow/dags
-
-# Logs persistence (disable for demo)
-logs:
-  persistence:
+  # Add mount for DAGs configmap
+  gitSync:
     enabled: false
+extraVolumes:
+  - name: airflow-dags
+    configMap:
+      name: airflow-dags
+extraVolumeMounts:
+  - name: airflow-dags
+    mountPath: /opt/airflow/dags
 
-# Ingress (disabled for demo, you can port-forward)
-ingress:
-  enabled: false
-
-      paths:
-        - path: /
-          pathType: Prefix
