@@ -6,9 +6,21 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://github.com/karty11/demo.git'
-    targetRevision: HEAD
-    path: helm/airflow
+    repoURL: https://airflow.apache.org
+    chart: airflow
+    targetRevision: 1.13.0
+    helm:
+      releaseName: airflow
+      values: |
+        executor: "CeleryExecutor"
+        workers:
+          replicas: 2
+        service:
+          type: ClusterIP
+        web:
+          port: 8080
+          service:
+            type: ClusterIP
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: airflow
