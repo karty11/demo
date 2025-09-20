@@ -9,7 +9,7 @@ jobs:
     permissions:
       contents: write
     env:
-      REPO_URL: "https://github.com/karty11/project_lake.git"
+      REPO_URL: "https://github.com/karty11/demo.git"
       AWS_REGION: "us-west-2"
       EKS_CLUSTER_NAME: "project-cluster"
       cluster_name: "project-cluster"
