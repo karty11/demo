@@ -23,17 +23,7 @@ spec:
                   name: {{ .Values.mysql.secretName | quote }}
                   key: {{ .Values.mysql.rootPasswordKey | quote }}
             - name: MYSQL_DATABASE
-              value: {{ .Values.mysql.database | quote }}
-            - name: MYSQL_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.mysql.secretName | quote }}
-                  key: {{ .Values.mysql.usernameKey | quote }}
-            - name: MYSQL_USER
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.mysql.secretName | quote }}
-                  key: {{ .Values.mysql.usernameKey | quote }}      
+              value: {{ .Values.mysql.database | quote }}    
           ports:
             - containerPort: 3306
               name: mysql
