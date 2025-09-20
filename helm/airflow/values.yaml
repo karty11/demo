@@ -62,4 +62,25 @@ extraVolumes:
 extraVolumeMounts:
   - name: airflow-dags
     mountPath: /opt/airflow/dags
+    
+airflow:
+  connections:
+    - id: mysql_conn
+      type: mysql
+      host: mysql.devproject
+      schema: bankappdb
+      login: root
+      password: "{{ .Values.mysql.rootPassword }}"  # or from ESO secret
+      port: 3306
+    - id: minio_conn
+      type: s3
+      extra: |
+        {
+          "aws_access_key_id": "minioadmin",
+          "aws_secret_access_key": "minioadmin",
+          "host": "http://minio.minio:9000",
+          "region_name": "us-east-1"
+        }
+    
+    
 
