@@ -439,11 +439,6 @@ jobs:
             kubectl apply -f manifest/argocd-app-trino.yaml
             kubectl apply -f manifest/argocd-app-airflow.yaml
             kubectl apply -f manifest/argocd-app-grafana.yaml
-            helm repo add apache-airflow https://airflow.apache.org
-            helm repo update
-            helm upgrade --install airflow apache-airflow/airflow \
-            -n airflow \
-            -f helm/airflow/values.yaml
           
             # --- Sync Data Lake Components ---
       - name: Trigger ArgoCD sync - minio
