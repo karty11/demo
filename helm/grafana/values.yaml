@@ -1,52 +1,55 @@
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: grafana
-  namespace: argocd
-spec:
-  project: default
-  source:
-    repoURL: https://grafana.github.io/helm-charts
-    chart: grafana
-    targetRevision: 8.3.9    # stable version
-    helm:
-      releaseName: grafana
-      values: |
-        adminUser: admin
-        adminPassword: admin
-        service:
-          type: ClusterIP
-          port: 3000
-        datasources:
-          datasources.yaml:
-            apiVersion: 1
-            datasources:
-              - name: Trino
-                type: trinodb-trino-datasource
-                access: proxy
-                url: http://trino.trino:8080
-                isDefault: true
-                jsonData:
-                  catalog: hive
-                  schema: default
-        dashboardProviders:
-          dashboardproviders.yaml:
-            apiVersion: 1
-            providers:
-              - name: 'default'
-                orgId: 1
-                folder: ''
-                type: file
-                disableDeletion: false
-                editable: true
-                options:
-                  path: /var/lib/grafana/dashboards
-        dashboardsConfigMaps:
-          default: grafana-dashboard-transactions
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: grafana
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
+# Grafana admin credentials
+adminUser: admin
+adminPassword: admin
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 3000
+
+# Preconfigure data sources
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Trino
+        type: trinodb-trino-datasource
+        access: proxy
+        url: http://trino.trino:8080   # Trino service inside K8s
+        isDefault: true
+        jsonData:
+          catalog: hive
+          schema: default
+
+# Enable dashboard provisioning
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards
+
+# Mount dashboards from a ConfigMap
+dashboardsConfigMaps:
+  default: grafana-dashboard-transactions
+
+# Persistence for dashboards & configs (optional)
+persistence:
+  enabled: true
+  size: 5Gi
+  storageClassName: gp2  # change to your EKS storage class
+
+# Resources (adjust based on your cluster capacity)
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 500m
+    memory: 1Gi
