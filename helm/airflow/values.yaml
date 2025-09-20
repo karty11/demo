@@ -35,7 +35,7 @@ postgresql:
   enabled: true
   primary:
     persistence:
-      enabled: true
+      enabled: false
       storageClass: gp3-csi   # ✅ CSI-backed EBS
 
 # Disable everything not needed for LocalExecutor
