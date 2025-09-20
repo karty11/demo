@@ -6,11 +6,11 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/karty11/New_project.git
+    repoURL: 'https://github.com/karty11/demo.git'
     targetRevision: HEAD
     path: helm/trino
   destination:
-    server: https://kubernetes.default.svc
+    server: 'https://kubernetes.default.svc'
     namespace: trino
   syncPolicy:
     automated:
