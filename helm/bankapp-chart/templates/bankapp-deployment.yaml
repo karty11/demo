@@ -31,10 +31,10 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.mysql.secretName }}
                   key: {{ .Values.mysql.rootPasswordKey }}
-            - name: DATALAKE_S3_BUCKET
-              value: "{{ .Values.datalake.bucket }}"
-            - name: AWS_REGION
-              value: "{{ .Values.datalake.region }}"      
+#            - name: DATALAKE_S3_BUCKET
+#              value: "{{ .Values.datalake.bucket }}"
+#            - name: AWS_REGION
+#              value: "{{ .Values.datalake.region }}"
 
 
 
