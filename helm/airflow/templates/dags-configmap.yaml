@@ -7,14 +7,36 @@ data:
   mysql_to_minio_parquet.py: |
     from airflow import DAG
     from airflow.operators.python import PythonOperator
+    from airflow.hooks.mysql_hook import MySqlHook
+    from airflow.hooks.base import BaseHook
+    from airflow.providers.amazon.aws.hooks.s3 import S3Hook
     from datetime import datetime
-    import os, requests
+    import pandas as pd
+    import io, os, requests
 
-    def extract():
-        print("Extract from MySQL → save to MinIO")
+    BUCKET_NAME = "datalake"
 
-    def transform():
-        print("Transform raw data → Parquet")
+    def extract(**context):
+        mysql_hook = MySqlHook(mysql_conn_id="mysql_conn")
+        sql = "SELECT id, user_id, amount, created_at FROM transactions;"
+        df = mysql_hook.get_pandas_df(sql)
+        context['ti'].xcom_push(key="raw_data", value=df.to_json())
+
+    def load_to_minio(**context):
+        df = pd.read_json(context['ti'].xcom_pull(task_ids="extract", key="raw_data"))
+        s3 = S3Hook(aws_conn_id="minio_conn")
+
+        # Save raw CSV
+        csv_buf = io.StringIO()
+        df.to_csv(csv_buf, index=False)
+        key_csv = f"raw/transactions_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
+        s3.load_string(csv_buf.getvalue(), key_csv, bucket_name=BUCKET_NAME, replace=True)
+
+        # Save curated Parquet
+        parquet_buf = io.BytesIO()
+        df.to_parquet(parquet_buf, engine="pyarrow", index=False)
+        key_parquet = f"curated/transactions_{datetime.now().strftime('%Y%m%d%H%M%S')}.parquet"
+        s3.load_bytes(parquet_buf.getvalue(), key_parquet, bucket_name=BUCKET_NAME, replace=True)
 
     def notify_grafana(**context):
         url = os.environ.get("GRAFANA_API_URL", "http://grafana.grafana:3000") + "/api/annotations"
@@ -22,9 +44,10 @@ data:
             "Authorization": f"Bearer {os.environ.get('GRAFANA_API_KEY','demo-key')}",
             "Content-Type": "application/json"
         }
-        payload = {"tags": ["airflow"], "text": f"DAG {context['dag'].dag_id} succeeded at {context['ts']}"}
+        payload = {"tags": ["airflow","datalake"], "text": f"DAG {context['dag'].dag_id} succeeded at {context['ts']}"}
         try:
-            requests.post(url, headers=headers, json=payload, timeout=5)
+            resp = requests.post(url, headers=headers, json=payload, timeout=5)
+            print("Grafana notify response:", resp.status_code, resp.text)
         except Exception as e:
             print("Grafana notify failed:", e)
 
@@ -35,7 +58,7 @@ data:
         catchup=False,
     ) as dag:
         extract = PythonOperator(task_id="extract", python_callable=extract)
-        transform = PythonOperator(task_id="transform", python_callable=transform)
+        load = PythonOperator(task_id="load_to_minio", python_callable=load_to_minio)
         notify = PythonOperator(task_id="notify_grafana", python_callable=notify_grafana)
-        extract >> transform >> notify
 
+        extract >> load >> notify
