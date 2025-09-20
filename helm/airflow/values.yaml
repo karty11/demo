@@ -39,7 +39,7 @@ postgresql:
   primary:
     persistence:
       enabled: true
-      storageClass: gp3   # change to gp3 if gp2 fails
+      storageClass: gp3-csi   # change to gp3 if gp2 fails
 
 # Disable Redis (not needed for LocalExecutor)
 redis:
