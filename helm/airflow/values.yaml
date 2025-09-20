@@ -42,8 +42,6 @@ postgresql:
 # Disable everything not needed for LocalExecutor
 redis:
   enabled: false
-workers:
-  enabled: false
 triggerer:
   enabled: false
 logs:
@@ -63,7 +61,6 @@ web:
 dags:
   persistence:
     enabled: false
-  path: /opt/airflow/dags
   gitSync:
     enabled: false
 
