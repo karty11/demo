@@ -20,12 +20,18 @@ spec:
             - name: MYSQL_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.externalSecrets.k8sSecretName | quote }}
-                  key: password
+                  name: {{ .Values.mysql.secretName | quote }}
+                  key: {{ .Values.mysql.rootPasswordKey | quote }}
             - name: MYSQL_DATABASE
               value: {{ .Values.mysql.database | quote }}
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.mysql.secretName | quote }}
+                  key: {{ .Values.mysql.usernameKey | quote }}
           ports:
             - containerPort: 3306
               name: mysql
+
   
 
