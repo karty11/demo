@@ -1,7 +1,7 @@
 replicaCount: 1
 image:
   repository: karty11/newbankapp
-  tag: 4a32d26c5b5c395a312585a7fdb64d1162359108
+  tag: 4972d4e7a457cbe041761c59fa0f5e859b900afd
 mysql:
   # Instead of storing creds here, only define DB name
   database: "bankappdb"
