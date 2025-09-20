@@ -279,7 +279,13 @@ jobs:
             chmod +x argocd
             sudo mv argocd /usr/local/bin/argocd
           fi
-
+      - name: Enable EBS CSI driver
+        run: |
+         aws eks create-addon \
+         --cluster-name project-cluster \
+         --addon-name aws-ebs-csi-driver \
+         --region us-west-2 || echo "Addon may already exist"
+         
       - name: Trigger ArgoCD sync - external-secrets-operator
         env:
           ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
