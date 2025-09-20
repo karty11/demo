@@ -24,10 +24,7 @@ spec:
                    key: {{ .Values.mysql.rootPasswordKey }}
              - name: MYSQL_DATABASE
                value: {{ .Values.mysql.database | quote }}
-#             - name: DATALAKE_S3_BUCKET
-#               value: "{{ .Values.datalake.bucket }}"
-#             - name: AWS_REGION
-#               value: "{{ .Values.datalake.region }}"
+#            
            ports:
              - containerPort: 3306
                name: mysql
