@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: 'https://charts.bitnami.com/bitnami'
     chart: trino
-    targetRevision: 15.1.0
+    targetRevision: "1.40.0"
     helm:
       releaseName: trino
       values: |
