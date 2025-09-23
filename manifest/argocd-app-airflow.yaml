@@ -6,33 +6,13 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://airflow.apache.org
-    chart: airflow
-    targetRevision: 1.13.0
+    repoURL: https://github.com/karty11/demo.git   # your Git repo
+    targetRevision: main                          # or branch name
+    path: helm/airflow                            # vendored chart directory
     helm:
       releaseName: airflow
-      values: |
-        executor: LocalExecutor
-        postgresql:
-          enabled: false
-        redis:
-          enabled: false
-        triggerer:
-          enabled: false
-        workers:
-          enabled: false
-        externalDatabase:
-          type: mysql
-          host: mysql.devproject.svc.cluster.local
-          port: 3306
-          user: root
-          passwordSecret:
-            name: bankapp-db-externalsecret
-            key: password
-          database: bankappdb
-        web:
-          service:
-            type: ClusterIP
+      valueFiles:
+        - airflow-values.yaml                     # values file inside helm/airflow
   destination:
     server: https://kubernetes.default.svc
     namespace: airflow
@@ -42,4 +22,51 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+
+
+
+# apiVersion: argoproj.io/v1alpha1
+# kind: Application
+# metadata:
+#   name: airflow
+#   namespace: argocd
+# spec:
+#   project: default
+#   source:
+#     repoURL: https://airflow.apache.org
+#     chart: airflow
+#     targetRevision: 1.13.0
+#     helm:
+#       releaseName: airflow
+#       values: |
+#         executor: LocalExecutor
+#         postgresql:
+#           enabled: false
+#         redis:
+#           enabled: false
+#         triggerer:
+#           enabled: false
+#         workers:
+#           enabled: false
+#         externalDatabase:
+#           type: mysql
+#           host: mysql.devproject.svc.cluster.local
+#           port: 3306
+#           user: root
+#           passwordSecret:
+#             name: bankapp-db-externalsecret
+#             key: password
+#           database: bankappdb
+#         web:
+#           service:
+#             type: ClusterIP
+#   destination:
+#     server: https://kubernetes.default.svc
+#     namespace: airflow
+#   syncPolicy:
+#     automated:
+#       prune: true
+#       selfHeal: true
+#     syncOptions:
+#       - CreateNamespace=true
 
