@@ -11,7 +11,7 @@ spec:
     targetRevision: 1.13.0
     helm:
       valueFiles:
-        - values/airflow-values.yaml   # 👈 ensure this is your file
+        - helm/airflow/airflow-values.yaml # 👈 ensure this is your file
   destination:
     server: https://kubernetes.default.svc
     namespace: airflow
