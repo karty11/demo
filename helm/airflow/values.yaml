@@ -3,50 +3,41 @@ image:
   tag: "2.9.0"
   pullPolicy: IfNotPresent
 
-# Executor - simplest for demo
+# Executor
 executor: "LocalExecutor"
 
 airflow:
-  fernetKey: "your-fernet-key-here"   # openssl rand -base64 32
-  secretKey: "super-secret-key"
-  webserverSecretKey: "another-secret-key"
+  # These secrets MUST exist or be generated
+  fernetKey: "replace-with-openssl-base64"       # openssl rand -base64 32
+  webserverSecretKey: "replace-with-web-key"     # openssl rand -base64 32
   config:
     AIRFLOW__CORE__LOAD_EXAMPLES: "False"
     AIRFLOW__CORE__EXECUTOR: "LocalExecutor"
-  connections:
-    - id: mysql_conn
-      type: mysql
-      host: mysql.devproject
-      schema: bankappdb
-      login: root
-      password: "Test@123"    
-      port: 3306
-    - id: minio_conn
-      type: s3
-      extra: |
-        {
-          "aws_access_key_id": "minioadmin",
-          "aws_secret_access_key": "minioadmin",
-          "host": "http://minio.minio:9000",
-          "region_name": "us-east-1"
-        }
+
+# ✅ Use existing MySQL instead of bundled Postgres
+externalDatabase:
+  type: mysql
+  host: mysql.devproject.svc.cluster.local   # k8s service name of your MySQL
+  port: 3306
+  user: root
+  passwordSecret:
+    name: bankapp-db-externalsecret          # already synced by ExternalSecrets
+    key: "Test@123"
+  database: bankappdb
+
 
 postgresql:
-  enabled: true
-  primary:
-    persistence:
-      enabled: true
-      storageClass: gp3-csi
-      size: 8Gi
+  enabled: false
 
-# Disable everything not needed for LocalExecutor
+# Disable redis/triggerer (not needed for LocalExecutor)
 redis:
   enabled: false
 triggerer:
   enabled: false
+
 logs:
   persistence:
-    enabled: false   # ✅ no PVCs for logs
+    enabled: false   # don’t bother with PVCs for logs in demo
 
 scheduler:
   replicas: 1
@@ -57,7 +48,7 @@ web:
     type: ClusterIP
     port: 8080
 
-# Mount DAGs from ConfigMap
+# DAGs handling
 dags:
   persistence:
     enabled: false
