@@ -377,6 +377,23 @@ jobs:
             kubectl apply -f manifest/argocd-app-grafana.yaml
           
             # --- Sync Data Lake Components ---
+      - name: Trigger ArgoCD sync - airflow
+        env:
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
+        run: |
+          set -euo pipefail
+          kubectl create ns airflow || true
+          if [ -n "${ARGOCD_SERVER:-}" ] && [ -n "${ARGOCD_AUTH_TOKEN:-}" ]; then
+            echo "Syncing Airflow..."
+            argocd app sync airflow \
+              --server "$ARGOCD_SERVER" \
+              --auth-token "$ARGOCD_AUTH_TOKEN" \
+              --grpc-web --insecure --timeout 300
+            kubectl -n airflow rollout status deploy/airflow-webserver --timeout=180s || true
+          else
+            echo "Skipping Airflow sync (missing ArgoCD server/token)"
+          fi      
       - name: Trigger ArgoCD sync - minio
         env:
           ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
@@ -413,24 +430,7 @@ jobs:
             echo "Skipping Trino sync (missing ArgoCD server/token)"
           fi
 
-      - name: Trigger ArgoCD sync - airflow
-        env:
-          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
-          ARGOCD_AUTH_TOKEN: ${{ secrets.ARGOCD_AUTH_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -n "${ARGOCD_SERVER:-}" ] && [ -n "${ARGOCD_AUTH_TOKEN:-}" ]; then
-            echo "Syncing Airflow..."
-            argocd app sync airflow \
-              --server "$ARGOCD_SERVER" \
-              --auth-token "$ARGOCD_AUTH_TOKEN" \
-              --grpc-web --insecure --timeout 300
-            kubectl create ns airflow || true
-            kubectl -n airflow rollout status deploy/airflow-webserver --timeout=180s || true
-          else
-            echo "Skipping Airflow sync (missing ArgoCD server/token)"
-          fi
-
+      
       - name: Trigger ArgoCD sync - grafana
         env:
           ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
