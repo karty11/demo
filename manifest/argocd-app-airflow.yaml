@@ -28,7 +28,7 @@ spec:
           user: root
           passwordSecret:
             name: bankapp-db-externalsecret
-            key: Test@123
+            key: password
           database: bankappdb
   destination:
     server: https://kubernetes.default.svc
