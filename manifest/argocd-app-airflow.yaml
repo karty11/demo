@@ -6,27 +6,20 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: 'https://airflow.apache.org'
+    repoURL: https://airflow.apache.org
     chart: airflow
     targetRevision: 1.13.0
     helm:
       releaseName: airflow
-      values: |
-        executor: "CeleryExecutor"
-        workers:
-          replicas: 2
-        service:
-          type: ClusterIP
-        web:
-          port: 8080
-          service:
-            type: ClusterIP
+      valueFiles:
+        - helm/airflow/airflow-values.yaml   # 👈 use your custom values.yaml
   destination:
-    server: 'https://kubernetes.default.svc'
+    server: https://kubernetes.default.svc
     namespace: airflow
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      - CreateNamespace=true  
+      - CreateNamespace=true
+
