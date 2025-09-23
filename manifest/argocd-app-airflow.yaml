@@ -6,13 +6,13 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/karty11/demo.git
-    targetRevision: main      # or your branch
-    path: helm/airflow
-    helm:
-      releaseName: airflow
-      valueFiles:
-        - airflow-values.yaml
+  repoURL: https://airflow.apache.org
+  chart: airflow
+  targetRevision: 1.13.0
+  helm:
+    releaseName: airflow
+    valueFiles:
+      - helm/airflow/airflow-values.yaml   # path inside *your* Git repo
   destination:
     server: https://kubernetes.default.svc
     namespace: airflow
