@@ -27,8 +27,8 @@ spec:
           port: 3306
           user: root
           passwordSecret:
-            name: airflow-metadata-db
-            key: password
+            name: bankapp-db-externalsecret
+            key: Test@123
           database: bankappdb
   destination:
     server: https://kubernetes.default.svc
