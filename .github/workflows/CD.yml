@@ -14,7 +14,7 @@ jobs:
       EKS_CLUSTER_NAME: "project-cluster"
       cluster_name: "project-cluster"
       SECRETS_MANAGER_NAME: "bankapp/mysql"
-      IMAGE_TAG: ${{ github.event.workflow_run.head_commit.id || github.sha }}
+      # IMAGE_TAG: ${{ github.event.workflow_run.head_commit.id || github.sha }}
       TF_DIR: "terraform"
 
     steps:
@@ -206,71 +206,6 @@ jobs:
          sed -i 's/\r$//' helm/bankapp-chart/values.yaml
          fi
 
-      # --- READ datalake.bucket from values.yaml (CI should have updated this) ---
-#      - name: Read datalake bucket from Helm values.yaml (CI writes this)
-#        id: read_datalake
-#        run: |
-#          set -euo pipefail
-#          if [ -f helm/bankapp-chart/values.yaml ]; then
-#            DATALAKE_BUCKET=$(yq eval '.datalake.bucket // ""' helm/bankapp-chart/values.yaml)
-#            echo "datalake_bucket=${DATALAKE_BUCKET}" >> $GITHUB_OUTPUT
-#            echo "Found datalake.bucket in values.yaml -> ${DATALAKE_BUCKET}"
-#          else
-#            echo "helm/bankapp-chart/values.yaml not found; cannot read datalake bucket"
-#            echo "datalake_bucket=" >> $GITHUB_OUTPUT
-#          fi
-#
-#      - name: Validate S3 datalake bucket exists (CI should have created it)
-#        env:
-#          DATALAKE_BUCKET: ${{ steps.read_datalake.outputs.datalake_bucket }}
-#        run: |
-#          set -euo pipefail
-#          if [ -z "${DATALAKE_BUCKET:-}" ]; then
-#            echo "DATALAKE_BUCKET not known (values.yaml not populated). Skipping validation. Ensure CI ran tf_datalake."
-#          else
-#            echo "Validating s3://${DATALAKE_BUCKET} from runner..."
-#            if ! aws s3 ls "s3://${DATALAKE_BUCKET}" >/dev/null 2>&1; then
-#              echo "Warning: s3://${DATALAKE_BUCKET} not accessible from runner. Either CI didn't create it or runner credentials lack permissions."
-#              aws s3 ls "s3://${DATALAKE_BUCKET}" || true
-#            else
-#              echo "S3 bucket ${DATALAKE_BUCKET} accessible from runner."
-#            fi
-#          fi
-#
-#      # --- Idempotent attach: only run attach TF if policy not already attached ---
-#      - name: Attach datalake S3 policy to external-secrets role (if needed)
-#        run: |
-#          set -euo pipefail
-#          TF_DIR_ATTACH="infra/terraform/attach-external-secrets-policy"
-#          if [ ! -d "${TF_DIR_ATTACH}" ]; then
-#            echo "Attach-external-secrets-policy TF module not present at ${TF_DIR_ATTACH} - skipping attach step."
-#            exit 0
-#          fi
-#
-#          IAM_ROLE_ARN="${{ steps.tf.outputs.iam_role_arn }}"
-#          if [ -z "${IAM_ROLE_ARN:-}" ] || [ "${IAM_ROLE_ARN}" = "null" ]; then
-#            echo "IAM_ROLE_ARN not available - cannot attach policy"
-#            exit 1
-#          fi
-#
-#          ROLE_NAME=$(echo "${IAM_ROLE_ARN}" | awk -F'/' '{print $NF}')
-#          echo "Checking attached policies for role: ${ROLE_NAME}"
-#
-#          ATTACHED_POLICIES=$(aws iam list-attached-role-policies --role-name "${ROLE_NAME}" --query 'AttachedPolicies[].PolicyName' --output text 2>/dev/null || true)
-#          echo "Currently attached policy names: ${ATTACHED_POLICIES}"
-#
-#          # If a policy that looks like the datalake policy is already attached, skip
-#          if echo "${ATTACHED_POLICIES}" | tr '\t' '\n' | grep -Ei 'datalake|bankapp-datalake' >/dev/null 2>&1; then
-#            echo "Found datalake-style policy attached to ${ROLE_NAME}; skipping attach."
-#          else
-#            echo "No datalake policy attached to ${ROLE_NAME}; running attach TF module."
-#            pushd "${TF_DIR_ATTACH}" >/dev/null
-#            terraform init -input=false
-#            terraform apply -auto-approve -input=false -var="role_name=${ROLE_NAME}" -var="datalake_bucket=${{ steps.read_datalake.outputs.datalake_bucket }}" -var="aws_region=${AWS_REGION}"
-#            terraform output -json > attach-outputs.json || true
-#            popd >/dev/null
-#          fi
-
       - name: Install argocd CLI (if missing)
         run: |
           set -euo pipefail
@@ -394,7 +329,8 @@ jobs:
 
       - name: Update Helm values.yaml with new image tag and push
         env:
-          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          # IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          IMAGE_TAG: "latest"
           BRANCH: ${{ steps.branch.outputs.branch }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
