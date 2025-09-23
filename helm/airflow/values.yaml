@@ -7,25 +7,26 @@ image:
 executor: "LocalExecutor"
 
 airflow:
-  # These secrets MUST exist or be generated before sync
-  fernetKey: "replace-with-openssl-base64"       # openssl rand -base64 32
-  webserverSecretKey: "replace-with-web-key"     # openssl rand -base64 32
+  fernetKey: "replace-with-openssl-base64"        # openssl rand -base64 32
+  webserverSecretKey: "replace-with-web-key"      # openssl rand -base64 32
 
   config:
     AIRFLOW__CORE__LOAD_EXAMPLES: "False"
     AIRFLOW__CORE__EXECUTOR: "LocalExecutor"
+    # ✅ Enable Kubernetes Secrets Backend
+    AIRFLOW__SECRETS__BACKEND: "airflow.providers.cncf.kubernetes.secrets.kubernetes_secrets.KubernetesSecretsBackend"
+    AIRFLOW__SECRETS__BACKEND_KWARGS: |
+      {"connections_path": "/connections", "variables_path": "/variables", "configmaps_path": "/configmaps", "namespace": "airflow"}
 
-  # ✅ Auto-create connections inside Airflow metadata DB
+  # ✅ Define connections (passwords resolved from K8s secrets)
   connections:
     - id: mysql_conn
       type: mysql
       host: mysql.devproject.svc.cluster.local
       schema: bankappdb
       login: root
-      # password will be injected from K8s secret (see below)
-      passwordSecret:
-        name: bankapp-db-externalsecret
-        key: "Test@123"
+      # Password will be read from K8s secret via KubernetesSecretsBackend
+      password: "airflow-mysql-password"
       port: 3306
 
     - id: minio_conn
@@ -45,7 +46,7 @@ externalDatabase:
   port: 3306
   user: root
   passwordSecret:
-    name: bankapp-db-externalsecret
+    name: airflow-metadata-db
     key: password
   database: bankappdb
 
@@ -61,7 +62,7 @@ triggerer:
 
 logs:
   persistence:
-    enabled: false   # don’t bother with PVCs for logs in demo
+    enabled: false
 
 scheduler:
   replicas: 1
@@ -72,7 +73,6 @@ web:
     type: ClusterIP
     port: 8080
 
-# DAGs handling
 dags:
   persistence:
     enabled: false
