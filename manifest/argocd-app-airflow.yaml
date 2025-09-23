@@ -6,13 +6,13 @@ metadata:
 spec:
   project: default
   source:
-  repoURL: https://github.com/karty11/demo.git
-  targetRevision: main   # or your branch
-  path: helm/airflow     
-  helm:
-    releaseName: airflow
-    valueFiles:
-      - airflow-values.yaml
+    repoURL: https://github.com/karty11/demo.git
+    targetRevision: main      # or your branch
+    path: helm/airflow
+    helm:
+      releaseName: airflow
+      valueFiles:
+        - airflow-values.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: airflow
@@ -22,4 +22,5 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+
 
