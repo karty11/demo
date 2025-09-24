@@ -22,6 +22,12 @@ output "role_name" {
   value = aws_iam_role.external_secrets_irsa.name
 }
 
-# output "datalake_policy_arn" {
-#   value = aws_iam_policy.datalake_policy.arn
-# }
+output "ebs_csi_driver_role_name" {
+  description = "Name of the IAM role for the EBS CSI driver"
+  value       = aws_iam_role.ebs_csi_driver_irsa.name
+}
+
+output "ebs_csi_driver_role_arn" {
+  description = "ARN of the IAM role for the EBS CSI driver"
+  value       = aws_iam_role.ebs_csi_driver_irsa.arn
+}
