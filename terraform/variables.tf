@@ -24,8 +24,3 @@ variable "oidc_thumbprint" {
   default = ""
 }
 
-variable "role_name" {
-  description = "Name of the IAM role for the EBS CSI driver"
-  type        = string
-  default     = "ebs-csi-driver-irsa"
-}
