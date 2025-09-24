@@ -65,7 +65,8 @@ webserver:
   replicas: 1
   service:
     type: ClusterIP
-    port: 8080
+    externalPort: 8080   # what clients use
+    internalPort: 8080   # containerPort inside pod
 
 # DAGs from ConfigMap (optional)
 dags:
