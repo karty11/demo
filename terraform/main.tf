@@ -74,3 +74,32 @@ resource "aws_iam_role" "external_secrets_irsa" {
     ]
   })
 }
+
+resource "aws_iam_role_policy" "external_secrets_irsa_policy" {
+  name = "external-secrets-irsa-policy"
+  role = aws_iam_role.external_secrets_irsa.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AllowReadSecrets"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:bankapp/mysql*"
+      },
+      {
+        Sid    = "AllowKMSDecrypt"
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
