@@ -134,6 +134,23 @@ jobs:
           fi
           echo "iam_role_arn=$IAM_ROLE_ARN" >> $GITHUB_OUTPUT
 
+      - name: Annotate ServiceAccount for EBS CSI Driver (IRSA)
+        run: |
+          set -euo pipefail
+          IAM_ROLE_ARN="${{ steps.tf.outputs.iam_role_arn }}"
+          if [ -z "${IAM_ROLE_ARN:-}" ] || [ "${IAM_ROLE_ARN}" = "null" ]; then
+            echo "IAM_ROLE_ARN is empty. Aborting."
+            exit 1
+          fi
+
+          echo "Annotating kube-system/ebs-csi-controller-sa with ${IAM_ROLE_ARN}"
+          kubectl -n kube-system annotate sa ebs-csi-controller-sa \
+            eks.amazonaws.com/role-arn="${IAM_ROLE_ARN}" --overwrite
+
+          echo "Restarting CSI driver pods to pick up the new IAM role..."
+          kubectl delete pod -n kube-system -l app.kubernetes.io/name=aws-ebs-csi-driver
+     
+
       - name: Create external-secrets namespace
         run: |
           kubectl create ns external-secrets || echo "namespace external-secrets already exists"
