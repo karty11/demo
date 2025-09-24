@@ -84,9 +84,3 @@ extraVolumeMounts:
   - name: airflow-dags
     mountPath: /opt/airflow/dags
 
-controller:
-  serviceAccount:
-    create: true
-    name: ebs-csi-controller-sa
-    annotations:
-      eks.amazonaws.com/role-arn: arn:aws:iam::439499528500:role/ebs-csi-driver-irsa
