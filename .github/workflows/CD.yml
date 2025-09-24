@@ -134,22 +134,38 @@ jobs:
           fi
           echo "iam_role_arn=$IAM_ROLE_ARN" >> $GITHUB_OUTPUT
 
-      # - name: Annotate ServiceAccount for EBS CSI Driver (IRSA)
-      #   run: |
-      #     set -euo pipefail
-      #     IAM_ROLE_ARN="${{ steps.tf.outputs.iam_role_arn }}"
-      #     if [ -z "${IAM_ROLE_ARN:-}" ] || [ "${IAM_ROLE_ARN}" = "null" ]; then
-      #       echo "IAM_ROLE_ARN is empty. Aborting."
-      #       exit 1
-      #     fi
+      - name: Terraform init & apply (create EBS CSI IRSA IAM role)
+        id: tf-ebs
+        working-directory: ebs-csi-driver
+        env:
+          AWS_REGION: ${{ env.AWS_REGION }}
+        run: |
+          set -euo pipefail
+          terraform init -input=false
+          terraform apply -auto-approve -input=false -var="cluster_name=${EKS_CLUSTER_NAME}" -var="aws_region=${AWS_REGION}"
+          terraform output -json > tfoutputs-ebs.json
+          EBS_ROLE_ARN=$(jq -r '.ebs_csi_driver_role_arn.value' tfoutputs-ebs.json || echo "")
+          if [ -z "$EBS_ROLE_ARN" ] || [ "$EBS_ROLE_ARN" = "null" ]; then
+            echo "Failed to obtain ebs_csi_driver_role_arn from terraform outputs"
+            exit 1
+          fi
+          echo "ebs_csi_driver_role_arn=$EBS_ROLE_ARN" >> $GITHUB_OUTPUT
 
-      #     echo "Annotating kube-system/ebs-csi-controller-sa with ${IAM_ROLE_ARN}"
-      #     kubectl -n kube-system annotate sa ebs-csi-controller-sa \
-      #       eks.amazonaws.com/role-arn="${IAM_ROLE_ARN}" --overwrite
+      - name: Annotate ServiceAccount for EBS CSI Driver
+        run: |
+          set -euo pipefail
+          EBS_ROLE_ARN="${{ steps.tf-ebs.outputs.ebs_csi_driver_role_arn }}"
+          if [ -z "${EBS_ROLE_ARN:-}" ] || [ "${EBS_ROLE_ARN}" = "null" ]; then
+            echo "EBS_ROLE_ARN is empty. Aborting."
+            exit 1
+          fi
+          echo "Annotating kube-system/ebs-csi-controller-sa with ${EBS_ROLE_ARN}"
+          kubectl -n kube-system annotate sa ebs-csi-controller-sa \
+            eks.amazonaws.com/role-arn="${EBS_ROLE_ARN}" --overwrite
 
-      #     echo "Restarting CSI driver pods to pick up the new IAM role..."
-      #     kubectl delete pod -n kube-system -l app.kubernetes.io/name=aws-ebs-csi-driver
-     
+          echo "Restarting CSI driver pods to pick up IAM role..."
+          kubectl -n kube-system delete pod -l app.kubernetes.io/name=aws-ebs-csi-driver
+
 
       - name: Create external-secrets namespace
         run: |
