@@ -36,9 +36,9 @@ postgresql:
 redis:
   enabled: false
 workers:
-  enabled: false
+  replicas: 0
 triggerer:
-  enabled: false
+  replicas: 0
 
 # External MySQL Database (bankappdb)
 externalDatabase:
@@ -61,7 +61,7 @@ scheduler:
   replicas: 1
 
 # Webserver
-web:
+webserver:
   replicas: 1
   service:
     type: ClusterIP
