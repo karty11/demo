@@ -66,7 +66,9 @@ resource "aws_iam_role_policy" "ebs_csi_driver_policy" {
           "ec2:DescribeTags",
           "ec2:DescribeVolumes",
           "ec2:DescribeVolumeAttribute",
-          "ec2:DescribeVolumeStatus"
+          "ec2:DescribeVolumeStatus",
+          "ec2:CreateTags",
+          "ec2:DeleteTags"
         ]
         Resource = "*"
       }
