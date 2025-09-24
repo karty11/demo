@@ -166,6 +166,12 @@ jobs:
             --namespace external-secrets \
             --create-namespace \
             --set installCRDs=true
+            
+      - name: Wait for ESO deployments
+        run: |
+          kubectl rollout status deploy/external-secrets -n external-secrets --timeout=120s
+          kubectl rollout status deploy/external-secrets-webhook -n external-secrets --timeout=120s
+          kubectl rollout status deploy/external-secrets-cert-controller -n external-secrets --timeout=120s    
 
       - name: Install bankapp DB ClusterSecretStore (if present)
         run: |
