@@ -21,7 +21,6 @@ data "aws_iam_openid_connect_provider" "eks" {
   arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${local.oidc_provider_url}"
 }
 
-# --- IAM Role for EBS CSI Driver ---
 resource "aws_iam_role" "ebs_csi_driver_irsa" {
   name = "ebs-csi-driver-irsa"
 
@@ -31,7 +30,7 @@ resource "aws_iam_role" "ebs_csi_driver_irsa" {
       {
         Effect = "Allow"
         Principal = {
-          Federated = aws_iam_openid_connect_provider.eks.arn
+          Federated = data.aws_iam_openid_connect_provider.eks.arn
         }
         Action = "sts:AssumeRoleWithWebIdentity"
         Condition = {
@@ -43,6 +42,7 @@ resource "aws_iam_role" "ebs_csi_driver_irsa" {
     ]
   })
 }
+
 
 # --- Inline Policy for EBS CSI Driver ---
 resource "aws_iam_role_policy" "ebs_csi_driver_policy" {
