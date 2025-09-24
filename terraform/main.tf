@@ -75,124 +75,51 @@ resource "aws_iam_role" "external_secrets_irsa" {
   })
 }
 
-# # Build S3 policy document
-# data "aws_iam_policy_document" "datalake_s3" {
-#   statement {
-#     sid     = "DatalakeS3Access"
-#     effect  = "Allow"
-#     actions = [
-#       "s3:PutObject",
-#       "s3:GetObject",
-#       "s3:ListBucket",
-#       "s3:DeleteObject"
-#     ]
-#     resources = [
-#       "arn:aws:s3:::${var.datalake_bucket}",
-#       "arn:aws:s3:::${var.datalake_bucket}/*"
-#     ]
-#   }
-# }
+resource "aws_iam_role" "ebs_csi_driver_irsa" {
+  name = "ebs-csi-driver-irsa"
 
-# Build combined policy for datalake (S3 + optional Glue)
-# data "aws_iam_policy_document" "datalake_full" {
-#   # S3 statement (same as datalake_s3)
-#   statement {
-#     sid     = "DatalakeS3Access"
-#     effect  = "Allow"
-#     actions = [
-#       "s3:PutObject",
-#       "s3:ListBucket",
-#       "s3:GetObject",
-#       "s3:DeleteObject"
-#     ]
-#     resources = [
-#       "arn:aws:s3:::${var.datalake_bucket}",
-#       "arn:aws:s3:::${var.datalake_bucket}/*"
-#     ]
-#   }
-#
-#   # Optional Glue permissions if requested
-#   dynamic "statement" {
-#     for_each = var.allow_glue ? [1] : []
-#     content {
-#       sid     = "GluePermissions"
-#       effect  = "Allow"
-#       actions = [
-#         "glue:GetDatabase",
-#         "glue:GetTable",
-#         "glue:CreatePartition",
-#         "glue:BatchCreatePartition",
-#         "glue:GetPartition",
-#         "glue:BatchGetPartition"
-#       ]
-#       resources = ["*"]
-#     }
-#   }
-# }
-#
-# # Create a managed IAM policy
-# resource "aws_iam_policy" "datalake_policy" {
-#   name        = "bankapp-datalake-policy-${var.datalake_bucket}"
-#   description = "Allows app access to S3 datalake bucket ${var.datalake_bucket}"
-#   policy      = data.aws_iam_policy_document.datalake_full.json
-#   tags = {
-#     ManagedBy = "terraform"
-#     Project   = "bankapp"
-#   }
-# }
-#
-# # Attach the managed policy to the existing role
-# resource "aws_iam_role_policy_attachment" "attach_policy_to_role" {
-#   role       = aws_iam_role.external_secrets_irsa.name
-#   policy_arn = aws_iam_policy.datalake_policy.arn
-# }
-#
-#
-data "aws_iam_policy_document" "external_secrets_policy" {
-  statement {
-    effect = "Allow"
-    actions = [
-      "secretsmanager:GetSecretValue",
-      "secretsmanager:DescribeSecret",
-      "secretsmanager:ListSecretVersionIds",
-      "secretsmanager:ListSecrets"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Federated = aws_iam_openid_connect_provider.eks.arn
+        }
+        Action = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            (local.oidc_sub_key) = "system:serviceaccount:kube-system:ebs-csi-controller-sa"
+          }
+        }
+      }
     ]
-    resources = ["*"]
-  }
-  statement {
-    effect = "Allow"
-    actions = [
-      "ssm:GetParameter",
-      "ssm:GetParameters",
-      "ssm:GetParametersByPath"
-    ]
-    resources = ["*"]
-  }
+  })
 }
 
-resource "aws_iam_role_policy" "external_secrets_access" {
-  name = "external-secrets-access"
-  role = aws_iam_role.external_secrets_irsa.name
+resource "aws_iam_role_policy" "ebs_csi_driver_policy" {
+  name = "ebs-csi-driver-policy"
+  role = aws_iam_role.ebs_csi_driver_irsa.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Sid = "AllowReadSecrets"
         Effect = "Allow"
         Action = [
-          "secretsmanager:GetSecretValue",
-          "secretsmanager:DescribeSecret"
+          "ec2:CreateVolume",
+          "ec2:AttachVolume",
+          "ec2:DeleteVolume",
+          "ec2:DetachVolume",
+          "ec2:DescribeAvailabilityZones",
+          "ec2:DescribeInstances",
+          "ec2:DescribeSnapshots",
+          "ec2:DescribeTags",
+          "ec2:DescribeVolumes",
+          "ec2:DescribeVolumeAttribute",
+          "ec2:DescribeVolumeStatus"
         ]
-        Resource = "arn:aws:secretsmanager:${var.aws_region}:${data.aws_caller_identity.current.account_id}:secret:bankapp/mysql*"
-      },
-      {
-        Sid = "AllowKMSDecryptIfNeeded"
-        Effect = "Allow"
-        Action = [
-          "kms:Decrypt"
-        ]
-        Resource = "*" # narrow this down to the KMS key ARN if you can
+        Resource = "*"
       }
     ]
   })
