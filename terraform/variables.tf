@@ -24,4 +24,10 @@ variable "oidc_thumbprint" {
   default = ""
 }
 
+variable "secret_name" {
+  description = "Secrets Manager secret name for bankapp MySQL"
+  type        = string
+  default     = "bankapp/mysql"
+}
+
 
