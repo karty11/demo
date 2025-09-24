@@ -21,3 +21,8 @@ output "aws_identity_debug" {
 output "role_name" {
   value = aws_iam_role.external_secrets_irsa.name
 }
+
+output "external_secrets_irsa_role_arn" {
+  description = "IAM Role ARN for External Secrets IRSA"
+  value       = aws_iam_role.external_secrets_irsa.arn
+}
