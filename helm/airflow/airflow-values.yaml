@@ -64,9 +64,10 @@ scheduler:
 webserver:
   replicas: 1
   service:
-    type: ClusterIP
-    externalPort: 8080   # what clients use
-    internalPort: 8080   # containerPort inside pod
+    type: ClusterIP   # or LoadBalancer if you want external access
+
+webserverPort: 8080   # 👈 move port config here
+
 
 # DAGs from ConfigMap (optional)
 dags:
