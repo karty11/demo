@@ -1,0 +1,83 @@
+# Airflow image
+image:
+  repository: apache/airflow
+  tag: "2.9.0"
+  pullPolicy: IfNotPresent
+
+# Executor mode
+executor: LocalExecutor
+
+# Core Airflow config
+airflow:
+  config:
+    AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+    AIRFLOW__CORE__EXECUTOR: "LocalExecutor"
+  connections:
+    - id: mysql_conn
+      type: mysql
+      host: mysql.devproject.svc.cluster.local
+      schema: bankappdb
+      login: root
+      password: "{{ conn.mysql_conn.password }}"  # handled by Secrets backend
+      port: 3306
+    - id: minio_conn
+      type: s3
+      extra: |
+        {
+          "aws_access_key_id": "minioadmin",
+          "aws_secret_access_key": "minioadmin",
+          "host": "http://minio.minio:9000",
+          "region_name": "us-east-1"
+        }
+
+# Disable bundled Postgres, Redis, workers, triggerer
+postgresql:
+  enabled: false
+redis:
+  enabled: false
+workers:
+  enabled: false
+triggerer:
+  enabled: false
+
+# External MySQL Database (bankappdb)
+externalDatabase:
+  type: mysql
+  host: mysql.devproject.svc.cluster.local
+  port: 3306
+  user: root
+  passwordSecret:
+    name: bankapp-db-externalsecret   # secret must exist in airflow namespace
+    key: password                     # key inside the secret
+  database: bankappdb
+
+# Logs (use EmptyDir)
+logs:
+  persistence:
+    enabled: false
+
+# Scheduler
+scheduler:
+  replicas: 1
+
+# Webserver
+web:
+  replicas: 1
+  service:
+    type: ClusterIP
+    port: 8080
+
+# DAGs from ConfigMap (optional)
+dags:
+  persistence:
+    enabled: false
+  gitSync:
+    enabled: false
+
+extraVolumes:
+  - name: airflow-dags
+    configMap:
+      name: airflow-dags
+extraVolumeMounts:
+  - name: airflow-dags
+    mountPath: /opt/airflow/dags
