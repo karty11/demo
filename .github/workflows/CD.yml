@@ -422,7 +422,11 @@ jobs:
             kubectl apply -f manifest/argocd-app-trino.yaml
             kubectl apply -f manifest/argocd-app-airflow.yaml
             kubectl apply -f manifest/argocd-app-grafana.yaml
-          
+      
+      - name: Install airflow DB ExternalSecret
+        run: |
+         kubectl apply -f helm/airflow-custom/externalsecret-db.yaml
+         
             # --- Sync Data Lake Components ---
       - name: Trigger ArgoCD sync - airflow
         env:
