@@ -160,6 +160,7 @@ jobs:
             exit 1
           fi
           echo "Annotating kube-system/ebs-csi-controller-sa with ${EBS_ROLE_ARN}"
+          kubectl -n kube-system wait --for=condition=Available deployment/ebs-csi-controller --timeout=120s
           kubectl -n kube-system annotate sa ebs-csi-controller-sa \
             eks.amazonaws.com/role-arn="${EBS_ROLE_ARN}" --overwrite
 
