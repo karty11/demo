@@ -133,7 +133,14 @@ jobs:
             exit 1
           fi
           echo "iam_role_arn=$IAM_ROLE_ARN" >> $GITHUB_OUTPUT
-
+          
+      - name: Enable EBS CSI driver
+        run: |
+         aws eks create-addon \
+         --cluster-name project-cluster \
+         --addon-name aws-ebs-csi-driver \
+         --region us-west-2 || echo "Addon may already exist"
+         
       - name: Terraform init & apply (create EBS CSI IRSA IAM role)
         id: tf-ebs
         working-directory: ebs-csi-driver
@@ -154,7 +161,7 @@ jobs:
       - name: Wait for EBS CSI driver controller
         run: |
           echo "Waiting for ebs-csi-controller deployment..."
-          kubectl -n kube-system rollout status deployment/ebs-csi-controller --timeout=300s
+          kubectl -n kube-system rollout status deploy -l app.kubernetes.io/name=aws-ebs-csi-driver --timeout=300s
           kubectl -n kube-system get sa ebs-csi-controller-sa || true
     
       - name: Annotate ServiceAccount for EBS CSI Driver
@@ -260,12 +267,6 @@ jobs:
             chmod +x argocd
             sudo mv argocd /usr/local/bin/argocd
           fi
-      - name: Enable EBS CSI driver
-        run: |
-         aws eks create-addon \
-         --cluster-name project-cluster \
-         --addon-name aws-ebs-csi-driver \
-         --region us-west-2 || echo "Addon may already exist"
          
       - name: Trigger ArgoCD sync - external-secrets-operator
         env:
