@@ -150,7 +150,13 @@ jobs:
             exit 1
           fi
           echo "ebs_csi_driver_role_arn=$EBS_ROLE_ARN" >> $GITHUB_OUTPUT
-
+     
+      - name: Wait for EBS CSI driver controller
+        run: |
+          echo "Waiting for ebs-csi-controller deployment..."
+          kubectl -n kube-system rollout status deployment/ebs-csi-controller --timeout=300s
+          kubectl -n kube-system get sa ebs-csi-controller-sa || true
+    
       - name: Annotate ServiceAccount for EBS CSI Driver
         run: |
           set -euo pipefail
